@@ -1,0 +1,147 @@
+<%@page import="com.hk.board.dtos.user_dtos"%>
+<%@page import="com.hk.board.daos.user_daos"%>
+<%@page import="java.net.URLEncoder"%>
+
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<% request.setCharacterEncoding("utf-8"); %>
+<% response.setContentType("text/html;charset=UTF-8"); %>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>회원 컨트롤러</title>
+</head>
+<body>
+<%
+	// 요청값을 받습니다.
+	String command = request.getParameter("command");
+
+	// 싱글톤 패턴으로 DAO 객체를 가져옵니다.
+	user_daos dao = user_daos.getUserDao();
+	
+	// command가 null인 경우를 대비하여 오류를 방지합니다.
+	if (command == null || command.trim().isEmpty()) {
+		response.sendRedirect("index.jsp");
+		return;
+	}
+
+	// 어떤 요청인지 확인하고 해당 코드를 실행합니다.
+	if (command.equals("registform")) { // 회원가입 폼 이동
+		response.sendRedirect("registform.jsp");
+	} else if (command.equals("insertuser")) { // 회원가입하기
+		// 회원정보 파라미터 받기 (DTO에 맞춰 T를 붙여서 받습니다.)
+		String tid = request.getParameter("id");
+		String tname = request.getParameter("name");
+		String tpassword = request.getParameter("password");
+		String temail = request.getParameter("email");
+		
+		// 주소 API 활용: 파라미터 받기
+		String addr1 = request.getParameter("addr1");
+		String addr2 = request.getParameter("addr2");
+		String addr3 = request.getParameter("addr3");
+		String addr4 = request.getParameter("addr4");
+		String taddress = addr1 + " " + addr2 + " " + addr3 + " " + addr4;
+		
+		boolean isS = dao.insertUser(new user_dtos(tid, tname, tpassword, taddress, temail));
+		if (isS) {
+%>
+			<script type="text/javascript">
+				alert("회원 가입이 완료되었습니다.");
+				location.href = "index.jsp";
+			</script>
+<%
+		} else {
+%>
+			<script type="text/javascript">
+				alert("회원 가입 실패");
+				location.href = "error.jsp";
+			</script>
+<%
+		}
+	} else if (command.equals("idchk")) { // id 체크
+		String tid = request.getParameter("id");
+		String resultId = dao.idCheck(tid); // 결과값이 null이면 사용 가능
+		
+		request.setAttribute("resultId", resultId);
+		pageContext.forward("idchkform.jsp"); 
+	} else if (command.equals("login")) {
+		String tid = request.getParameter("id");
+		String tpassword = request.getParameter("password");
+		
+		// id와 pw에 해당하는 회원정보 조회
+		user_dtos dto = dao.getLogin(tid, tpassword);
+		
+		if (dto == null || dto.getTid() == null) { // 회원이 존재하지 않는다면
+			response.sendRedirect("index.jsp?msg=" + URLEncoder.encode("회원가입을 해주세요", "utf-8"));
+		} else {
+			// 회원이라면!
+			// session에 로그인 정보를 저장합니다.
+			session.setAttribute("ldto", dto);
+			session.setMaxInactiveInterval(10 * 60); // 10분간 유지
+			
+			// 등급[ADMIN, MANAGER, USER]을 확인하여 해당 Main 페이지로 이동합니다.
+			String trole = dto.getTrole();
+			if (trole != null && trole.toUpperCase().equals("ADMIN")) {
+				response.sendRedirect("admin_main.jsp");
+			} else if (trole != null && trole.toUpperCase().equals("MANAGER")) {
+				response.sendRedirect("manager_main.jsp");
+			} else if (trole != null && trole.toUpperCase().equals("USER")) {
+				response.sendRedirect("user_main.jsp");
+			}
+		}
+	} else if (command.equals("logout")) { // 로그아웃
+		session.invalidate(); // session의 모든 정보 삭제
+		response.sendRedirect("index.jsp");
+	} else if (command.equals("userinfo")) { // 회원 상세 조회
+		String tid = request.getParameter("id");
+		user_dtos dto = dao.getUser(tid);
+		
+		request.setAttribute("dto", dto);
+		pageContext.forward("userinfo.jsp");
+	} else if (command.equals("userupdate")) {
+		String tid = request.getParameter("id");
+		String taddress = request.getParameter("address");
+		String temail = request.getParameter("email");
+		
+		boolean isS = dao.updateUser(new user_dtos(tid, taddress, temail));
+		
+		if (isS) {
+%>
+			<script type="text/javascript">
+				alert("수정완료");
+				location.href = "userController.jsp?command=userinfo&id=<%=tid%>";
+			</script>
+<%
+		} else {
+%>
+			<script type="text/javascript">
+				alert("수정실패");
+				location.href = "error.jsp";
+			</script>
+<%
+		}
+	} else if (command.equals("deluser")) {
+		String tid = request.getParameter("id");
+		
+		boolean isS = dao.delUser(tid);
+		session.invalidate(); // 세션 삭제
+		if (isS) {
+%>
+			<script type="text/javascript">
+				alert("회원 탈퇴를 완료하였습니다.");
+				location.href = "index.jsp";
+			</script>
+<%
+		} else {
+%>
+			<script type="text/javascript">
+				alert("회원 탈퇴 실패");
+				location.href = "error.jsp";
+			</script>
+<%
+		}
+	}
+%>
+</body>
+</html>

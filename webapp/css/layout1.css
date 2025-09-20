@@ -1,0 +1,23 @@
+@charset "UTF-8";
+
+.main{
+		padding:10px;
+		font-size: 15pt;
+	}
+.main a{
+	text-decoration: none;
+}   
+
+.content{
+	width: 600px;
+	margin:0px auto;
+}
+
+.admin_content{
+	width: 1200px;
+	margin:0px auto;
+}
+
+.admin_content .userRole{
+	width:600px;
+}
